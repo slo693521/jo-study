@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>日本語ノート N5 自學系統</title>
+<meta name="description" content="零基礎 6 個月 JLPT N5 自學教材：課程、單字間隔複習、文法、有聲書、聽力與測驗。純前端，資料存在你的瀏覽器。">
+<link rel="stylesheet" href="styles.css">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#2a5bb0">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="日本語N5">
+</head>
+<body>
+<a class="skip" href="#main">跳到主要內容</a>
+<header class="topbar">
+  <button id="menuBtn" class="icon-btn" aria-label="開啟選單" aria-expanded="false" aria-controls="nav">☰</button>
+  <a class="brand" href="#/home"><span class="brand-jp">日本語</span><span class="brand-sub">N5 自學系統</span></a>
+  <div class="top-actions">
+    <span id="streakChip" class="chip" title="連續學習天數"></span>
+    <button id="voiceChip" class="chip chip-btn" title="日文語音狀態（點擊前往設定）"></button>
+  </div>
+</header>
+<div class="layout">
+  <nav id="nav" class="sidebar" aria-label="主要導覽"></nav>
+  <div id="scrim" class="scrim" hidden></div>
+  <main id="main" tabindex="-1"><noscript><p class="card">這個系統需要啟用 JavaScript 才能使用。</p></noscript></main>
+</div>
+<nav id="bottombar" class="bottombar" aria-label="快速導覽"></nav>
+<div id="toast" role="status" aria-live="polite"></div>
+<div id="modal" class="modal" hidden></div>
+
+<script src="js/jp.js"></script>
+<script src="js/counters.js"></script>
+<script src="js/dataindex.js"></script>
+<script src="js/quizgen.js"></script>
+<script src="data/core.js"></script>
+<script src="data/kana.js"></script>
+<script src="data/vocab-1.js"></script>
+<script src="data/vocab-2.js"></script>
+<script src="data/vocab-3.js"></script>
+<script src="data/vocab-4.js"></script>
+<script src="data/vocab-5.js"></script>
+<script src="data/vocab-6.js"></script>
+<script src="data/grammar-1.js"></script>
+<script src="data/grammar-2.js"></script>
+<script src="data/grammar-3.js"></script>
+<script src="data/lessons-1.js"></script>
+<script src="data/lessons-2.js"></script>
+<script src="data/lessons-3.js"></script>
+<script src="data/lessons-4.js"></script>
+<script src="data/readings.js"></script>
+<script src="data/listening.js"></script>
+<script src="data/mocks.js"></script>
+<script src="data/audiomap.js"></script>
+<script src="js/storage.js"></script>
+<script src="js/progress.js"></script>
+<script src="js/audio.js"></script>
+<script src="app.js"></script>
+<script src="js/view-learn.js"></script>
+<script src="js/view-vocab.js"></script>
+<script src="js/view-quiz.js"></script>
+<script src="js/view-audio.js"></script>
+<script src="js/view-records.js"></script>
+<script>App.start();
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(function () {});</script>
+</body>
+</html>
