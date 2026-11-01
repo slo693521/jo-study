@@ -141,8 +141,28 @@
     let [t, c] = map[st] || map.loading;
     if ((st === 'no-voice' || st === 'unsupported') && Audio.hasMap()) { t = '🔊 錄音檔'; c = ''; }
     v.textContent = t; v.className = 'chip chip-btn ' + c;
+    updateSyncChip();
   }
   App.updateChips = updateChips;
+
+  /* ---------- 雲端同步狀態 ---------- */
+  function updateSyncChip() {
+    const el = $('#syncChip'); if (!el || !root.Sync) return;
+    const st = root.Sync.getStatus(), c = root.Sync.getConfig();
+    if (st.state === 'off' || !c.enabled) { el.hidden = true; return; }
+    el.hidden = false;
+    const map = { idle: ['☁️', '', '雲端同步已開啟'], syncing: ['☁️⟳', '', '同步中…'], ok: ['☁️✓', '', '已同步'], offline: ['☁️⏸', 'warn', '離線中：資料先存在本機，恢復連線後自動同步'], error: ['☁️!', 'warn', '同步失敗：' + st.msg] };
+    const [t, cl, title] = map[st.state] || map.idle;
+    el.textContent = t; el.className = 'chip chip-btn ' + cl; el.title = title + (c.lastSync ? `（上次同步 ${App.fmtDate(c.lastSync, true)}）` : '');
+    el.setAttribute('aria-label', el.title);
+    const box = $('#syncStatus'); if (box && App.syncStatusHtml) box.innerHTML = App.syncStatusHtml();
+  }
+  App.updateSyncChip = updateSyncChip;
+  // 同步帶回其他裝置的新進度時：在不會打斷操作的頁面直接重畫，其他頁面（測驗、單字卡、有聲書）等下次換頁再顯示
+  App.onSynced = function () {
+    updateChips();
+    if (['home', 'today', 'lessons', 'records', 'mistakes'].includes(App.current) && !$('#modal:not([hidden])')) route(true);
+  };
 
   /* ---------- 路由 ---------- */
   function route(again) {
@@ -240,8 +260,9 @@
     const hasData = Object.keys(s.cards).length || s.quizzes.length || Object.keys(s.lessons).length;
     if (!Store.isPersistent()) return notice('瀏覽器目前不允許儲存資料（可能是無痕模式或封鎖網站資料），關閉分頁後進度會消失。請改用一般視窗，並定期到「設定與備份」匯出。', 'bad', '進度無法保存');
     if (!hasData) return '';
+    if (root.Sync) { const c = root.Sync.getConfig(); if (c.enabled && c.lastSync && Date.now() - c.lastSync < 7 * 86400000) return ''; } // 雲端同步正常時不提醒手動備份
     const since = s.lastExport ? Math.floor((Date.now() - s.lastExport) / 86400000) : null;
-    if (since === null && Progress.daysSinceStart() >= 3) return notice('進度只存在這個瀏覽器的 localStorage，不是雲端備份。清除瀏覽資料、換瀏覽器或換電腦都會遺失。 <a href="#/settings">立即匯出備份</a>', 'warn', '你還沒有備份過學習紀錄');
+    if (since === null && Progress.daysSinceStart() >= 3) return notice('進度只存在這個瀏覽器的 localStorage。清除瀏覽資料、換瀏覽器或換電腦都會遺失。 <a href="#/settings">開啟雲端同步或匯出備份</a>', 'warn', '你還沒有備份過學習紀錄');
     if (since !== null && since >= 14) return notice(`上次匯出是 ${since} 天前。 <a href="#/settings">再匯出一次</a>`, 'warn', '該備份了');
     return '';
   }
@@ -369,5 +390,6 @@
     buildNav(); bindEvents(); bindAudioEvents();
     App.applySettings(); updateChips();
     if (!location.hash) location.hash = '#/home'; else route();
+    if (root.Sync) { root.Sync.onStatus(updateSyncChip); root.Sync.start(); $('#syncChip').addEventListener('click', () => App.go('#/settings')); }
   };
 })(window);

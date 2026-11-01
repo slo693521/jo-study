@@ -408,7 +408,7 @@
   App.acts.mCat = el => { App.tmp.mcat = el.dataset.c; App.refresh(); };
   App.acts.mDel = async el => {
     if (!await App.confirm('移除這題？', '只會從錯題本移除，不影響單字複習進度。', '移除', true)) return;
-    const s = Store.get(); s.mistakes = s.mistakes.filter(m => m.key !== el.dataset.key); Store.save(); App.refresh();
+    const s = Store.get(); s.mistakes = s.mistakes.filter(m => m.key !== el.dataset.key); Store.tombstone('mis:' + el.dataset.key); Store.save(); App.refresh();
   };
 
   /* ================= 閱讀理解 ================= */

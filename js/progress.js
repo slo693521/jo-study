@@ -143,7 +143,7 @@
   function newToday() { return day().newWords || 0; }
   function newRemainingToday() { return Math.max(0, S().settings.newPerDay - newToday()); }
 
-  function toggleFav(id) { const f = S().favs; if (f[id]) delete f[id]; else f[id] = Date.now(); root.Store.save(); return !!f[id]; }
+  function toggleFav(id) { const f = S().favs; if (f[id]) { delete f[id]; root.Store.tombstone('fav:' + id); } else f[id] = Date.now(); root.Store.save(); return !!f[id]; }
   function isFav(id) { return !!S().favs[id]; }
 
   /* ---------- 課程進度 ---------- */

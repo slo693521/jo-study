@@ -1,7 +1,7 @@
 /* storage.js — 學習紀錄的保存、載入、匯出、匯入
  * - 使用 localStorage（key: jpstudy.v1）。若瀏覽器封鎖 localStorage（例如私密模式），退回記憶體模式並提示。
  * - 匯入時會驗證結構，可選擇「合併」或「取代」。
- * 注意：localStorage 只存在這個瀏覽器，不是雲端備份；清除網站資料就會消失，請定期匯出。
+ * 注意：localStorage 只存在這個瀏覽器；可在「設定與備份」開啟 GitHub 雲端同步（js/sync.js），或定期匯出。
  */
 (function (root) {
   'use strict';
@@ -26,7 +26,7 @@
         newPerDay: 10, reviewCap: 40, theme: 'auto', fontScale: 1, followGap: 1.4
       },
       lessons: {}, cards: {}, favs: {}, grammar: {}, kana: {}, mistakes: [], quizzes: [], days: {},
-      listening: {}, readings: {}, notes: {}
+      listening: {}, readings: {}, notes: {}, tomb: {}
     };
   }
 
@@ -43,7 +43,7 @@
     const d = defaults();
     const out = Object.assign({}, d, s);
     out.settings = Object.assign({}, d.settings, s.settings || {});
-    ['lessons', 'cards', 'favs', 'grammar', 'kana', 'days', 'listening', 'readings', 'notes'].forEach(k => { if (!out[k] || typeof out[k] !== 'object' || Array.isArray(out[k])) out[k] = {}; });
+    ['lessons', 'cards', 'favs', 'grammar', 'kana', 'days', 'listening', 'readings', 'notes', 'tomb'].forEach(k => { if (!out[k] || typeof out[k] !== 'object' || Array.isArray(out[k])) out[k] = {}; });
     ['mistakes', 'quizzes'].forEach(k => { if (!Array.isArray(out[k])) out[k] = []; });
     out.v = VERSION;
     return out;
@@ -69,8 +69,10 @@
     state.lastSaved = Date.now();
     mem = state;
     if (!persistent) return false;
-    try { root.localStorage.setItem(KEY, JSON.stringify(state)); return true; }
-    catch (e) { persistent = false; listeners.forEach(f => f({ type: 'error', error: e })); return false; }
+    try { root.localStorage.setItem(KEY, JSON.stringify(state)); }
+    catch (e) { persistent = false; emit({ type: 'error', error: e }); return false; }
+    emit({ type: 'saved' });
+    return true;
   }
   function save() { // 合併短時間內多次存檔
     clearTimeout(saveTimer);
@@ -99,14 +101,25 @@
     return null;
   }
 
-  // 合併：以較新的複習時間為準；課程取較高成績；日紀錄相加取最大值
+  // 合併（匯入與雲端同步共用）：
+  // - 單字卡：以較新的複習時間（last）為準
+  // - 課程：完成狀態取聯集、成績取最高
+  // - 收藏、錯題：依時間戳記比較，配合「刪除紀錄」(tomb) 讓取消收藏／移除錯題也能同步
+  // - 每日紀錄：各欄位取最大值；測驗紀錄取聯集
+  // - 設定（語音、字體大小等）保留 a（本機）的值
+  function ts(v) { return typeof v === 'number' ? v : (v ? 1 : 0); }
   function merge(a, b) {
+    b = normalize(JSON.parse(JSON.stringify(b)));
     const out = normalize(JSON.parse(JSON.stringify(a)));
+    // 刪除紀錄：取較新的時間
+    out.tomb = Object.assign({}, out.tomb);
+    Object.entries(b.tomb || {}).forEach(([k, t]) => { if (!(out.tomb[k] >= t)) out.tomb[k] = t; });
     Object.entries(b.cards || {}).forEach(([k, c]) => {
       const o = out.cards[k];
       if (!o || (c.last || 0) > (o.last || 0)) out.cards[k] = c;
     });
-    Object.assign(out.favs, b.favs || {});
+    Object.entries(b.favs || {}).forEach(([k, v]) => { if (ts(v) > ts(out.favs[k])) out.favs[k] = v; });
+    Object.keys(out.favs).forEach(k => { const t = out.tomb['fav:' + k]; if (t && t >= ts(out.favs[k])) delete out.favs[k]; });
     Object.entries(b.lessons || {}).forEach(([k, l]) => {
       const o = out.lessons[k];
       if (!o) { out.lessons[k] = l; return; }
@@ -115,6 +128,7 @@
         quizBest: Math.max(o.quizBest || 0, l.quizBest || 0), attempts: Math.max(o.attempts || 0, l.attempts || 0),
         completedAt: o.completedAt && l.completedAt ? Math.min(o.completedAt, l.completedAt) : (o.completedAt || l.completedAt)
       });
+      Object.keys(out.lessons[k]).forEach(f => { if (out.lessons[k][f] === undefined) delete out.lessons[k][f]; });
     });
     ['grammar', 'kana'].forEach(t => Object.entries(b[t] || {}).forEach(([k, v]) => {
       const o = out[t][k];
@@ -123,18 +137,55 @@
     Object.entries(b.days || {}).forEach(([k, v]) => {
       const o = out.days[k];
       if (!o) { out.days[k] = v; return; }
-      ['newWords', 'reviews', 'reviewsOk', 'quizzes', 'minutes'].forEach(f => { o[f] = Math.max(o[f] || 0, v[f] || 0); });
+      ['newWords', 'reviews', 'reviewsOk', 'quizzes', 'minutes'].forEach(f => { if (o[f] !== undefined || v[f] !== undefined) o[f] = Math.max(o[f] || 0, v[f] || 0); });
+      if (v.active) o.active = true;
       o.tasks = Object.assign({}, v.tasks || {}, o.tasks || {});
     });
     const seen = new Set(out.quizzes.map(q => q.t));
     (b.quizzes || []).forEach(q => { if (!seen.has(q.t)) out.quizzes.push(q); });
     out.quizzes.sort((x, y) => x.t - y.t);
-    const mk = new Set(out.mistakes.map(m => m.key));
-    (b.mistakes || []).forEach(m => { if (!mk.has(m.key)) out.mistakes.push(m); });
-    Object.assign(out.listening, b.listening || {}); Object.assign(out.readings, b.readings || {});
+    // 錯題：同一題取較新的那份；被移除的題目不會再出現（除非之後又答錯）
+    const mt = m => Math.max(m.last || 0, m.first || 0);
+    const mm = new Map(out.mistakes.map(m => [m.key, m]));
+    (b.mistakes || []).forEach(m => { const o = mm.get(m.key); if (!o || mt(m) > mt(o)) mm.set(m.key, m); });
+    out.mistakes = [...mm.values()].filter(m => { const t = out.tomb['mis:' + m.key]; return !(t && t >= mt(m)); });
+    if (out.mistakes.length > 400) { out.mistakes.sort((x, y) => mt(y) - mt(x)); out.mistakes.length = 400; }
+    out.mistakes.sort((x, y) => (x.first || 0) - (y.first || 0));
+    ['listening', 'readings'].forEach(t => Object.entries(b[t] || {}).forEach(([k, v]) => {
+      const o = out[t][k];
+      if (!o) { out[t][k] = v; return; }
+      const newer = (v.t || 0) > (o.t || 0) ? v : o;
+      out[t][k] = Object.assign({}, newer, { tries: Math.max(o.tries || 0, v.tries || 0) });
+      if ('best' in o || 'best' in v) out[t][k].best = typeof o.best === 'boolean' || typeof v.best === 'boolean' ? !!(o.best || v.best) : Math.max(o.best || 0, v.best || 0);
+    }));
+    // 雜項紀錄：時間取較新、跟讀紀錄取聯集
+    const bn = b.notes || {};
+    Object.entries(bn).forEach(([k, v]) => {
+      const o = out.notes[k];
+      if (o === undefined) out.notes[k] = v;
+      else if (typeof v === 'number' && typeof o === 'number') out.notes[k] = Math.max(o, v);
+      else if (v && typeof v === 'object' && o && typeof o === 'object' && !Array.isArray(v)) {
+        const m = Object.assign({}, o);
+        Object.entries(v).forEach(([kk, vv]) => { if (!(kk in m) || (typeof vv === 'number' && vv > m[kk])) m[kk] = vv; });
+        out.notes[k] = m;
+      }
+    });
     if (b.startDate && b.startDate < out.startDate) out.startDate = b.startDate;
+    if (b.createdAt && b.createdAt < out.createdAt) out.createdAt = b.createdAt;
     out.settings = Object.assign({}, out.settings, a.settings);
     return out;
+  }
+
+  // 記錄刪除（讓「取消收藏」「移除錯題」能同步到其他裝置）
+  function tombstone(key) { const s = get(); s.tomb = s.tomb || {}; s.tomb[key] = Date.now(); }
+
+  // 用合併後的資料更新目前狀態（就地更新，避免其他程式拿著舊物件）
+  function replaceState(next) {
+    const s = get();
+    Object.keys(s).forEach(k => { if (!(k in next)) delete s[k]; });
+    Object.assign(s, next);
+    saveNow();
+    return s;
   }
 
   function importData(text, mode) {
@@ -153,9 +204,10 @@
     try { return new Blob([JSON.stringify(get())]).size; } catch (e) { return 0; }
   }
   function onEvent(f) { listeners.push(f); }
+  function emit(ev) { listeners.forEach(f => { try { f(ev); } catch (e) { /* ignore */ } }); }
   function isPersistent() { return persistent; }
 
-  const Store = { load, get, save, saveNow, exportData, importData, validate, reset, usage, today, onEvent, isPersistent, defaults, normalize, merge, KEY };
+  const Store = { load, get, save, saveNow, exportData, importData, validate, reset, usage, today, onEvent, isPersistent, defaults, normalize, merge, tombstone, replaceState, KEY };
   root.Store = Store;
   if (typeof module !== 'undefined') module.exports = Store;
 })(typeof window !== 'undefined' ? window : globalThis);

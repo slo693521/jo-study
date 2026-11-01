@@ -17,7 +17,7 @@ python3 -m http.server 8000
 
 - 沒有 Python 的話：`npx serve .`（需要 Node.js），或用 VS Code 的 Live Server 擴充套件。
 - **手機使用**：已發佈到 GitHub Pages，手機瀏覽器直接開，並可「加入主畫面」當 App 用，離線也能學。修改程式後重新推送即可更新。
-- 手機與電腦的進度不會自動同步：到「設定與備份」按「📋 複製備份文字」，傳到另一台後按「📥 貼上備份文字匯入」（選「合併」）。
+- 手機與電腦的進度可以用 GitHub 私人 repo 自動同步，設定方式見下方「雲端同步」。不想設定的話，也可以在「設定與備份」按「📋 複製備份文字」，傳到另一台後按「📥 貼上備份文字匯入」（選「合併」）。
 - 手機想連電腦上的網站時，電腦端改成 `python3 -m http.server 8000 --bind 0.0.0.0`，手機再開 `http://電腦的區網IP:8000/`。注意：每個網址（包括 IP 和埠號）的學習紀錄是分開存的。
 - 建議用 Chrome、Edge 或 Safari 的新版本。
 
@@ -60,12 +60,70 @@ python3 -m http.server 8000
 
 ## 備份（重要）
 
-- 學習進度存在瀏覽器的 **localStorage**，這**不是雲端備份**。清除瀏覽資料、用無痕模式、換瀏覽器或換電腦，進度都會不見。
+- 學習進度存在瀏覽器的 **localStorage**。沒開雲端同步時，清除瀏覽資料、用無痕模式、換瀏覽器或換電腦，進度都會不見。開了同步也建議偶爾匯出一份。
 - 請定期到「設定與備份 → 匯出備份」下載 JSON 檔，並存到雲端硬碟或隨身碟。超過 14 天沒有匯出時，首頁會提醒你。
 - 匯入時有兩種方式：
   - 合併（建議）：保留目前的資料，再把備份中較新或較多的進度併進來。
   - 取代：完全換成備份檔的內容。
 - 匯入前系統會先檢查檔案格式，格式不對的檔案會被拒絕，現有資料不會改變。
+
+## 雲端同步（手機 ↔ 電腦）
+
+在「設定與備份 → ☁️ 雲端同步」開啟。學習紀錄會存成你自己 GitHub **私人** repo 裡的一個 `progress.json`，網站直接從瀏覽器呼叫 GitHub API 讀寫，不經過其他伺服器，也不需要付費。
+
+### 第一次設定（約 5 分鐘）
+
+1. **建立私人 repo**：登入 GitHub → 右上角「+」→「New repository」→ 名稱填 `jp-study-data` → 選 **Private** →「Create repository」。
+   （注意：放網站的 repo 是公開的，進度一定要放在**另一個私人 repo**，系統會拒絕公開 repo。）
+2. **產生 token**：GitHub 右上角頭像 → Settings → 左側最下面 Developer settings → Personal access tokens → **Fine-grained tokens** →「Generate new token」。
+   - Token name：例如「日文同步-電腦」
+   - Expiration：選 1 年（到期後重新產生、重新貼上即可）
+   - Repository access：選 **Only select repositories**，只勾 `jp-study-data`
+   - Permissions → Repository permissions → **Contents** 改成 **Read and write**（其他都不用動）
+   - 按「Generate token」，複製以 `github_pat_` 開頭的文字。這串文字只會顯示一次。
+3. **在網站貼上**：打開網站 →「設定與備份」→「☁️ 雲端同步」，填入 GitHub 帳號、repo 名稱（預設 `jp-study-data`）、貼上 token →「連線並同步」。
+4. **另一台裝置**重複第 2、3 步。建議每台裝置各產生一個 token，裝置遺失時只要刪掉那一個。
+   如果要把同一個 token 傳到手機，可以用 LINE 傳給自己，貼上後立刻刪除那則訊息。
+
+兩台裝置要用**同一個網址**開啟（建議都用 GitHub Pages 網址）。內嵌在其他網站裡的預覽頁可能不允許連到 GitHub，同步會顯示「連不到 GitHub」。
+
+### 什麼時候同步
+
+- 打開網站時、做完一段練習約 15 秒後、切到其他 App 或關閉頁面時、恢復網路連線時，以及頁面開著時每 5 分鐘。
+- 也可以按「⟳ 立即同步」。右上角的 ☁️ 圖示顯示狀態：☁️✓ 已同步、☁️⏸ 離線、☁️! 同步失敗（點它看原因）。
+- 離線時照常學習，資料先存在本機，恢復連線後自動上傳。
+
+### 兩台都有新進度時怎麼合併
+
+| 資料 | 規則 |
+|---|---|
+| 單字複習（SRS） | 以最近一次複習的那台為準 |
+| 課程完成、讀完、單字學完 | 取聯集（任一台完成就算完成），測驗最高分取最高 |
+| 測驗紀錄 | 取聯集 |
+| 收藏、錯題本 | 依時間比較；取消收藏、移除錯題也會同步 |
+| 每日學習量 | 各欄位取兩台中較大的值（同一天兩台都有學時，數字可能偏少） |
+| 設定（語音、字體大小、主題等） | 每台各自保留，不同步 |
+
+上傳時會帶版本號（sha）。如果兩台剛好同時上傳，後到的一台會重新下載、合併後再上傳，不會互相覆蓋。
+
+### 隱私與風險
+
+- 學習紀錄放在你的私人 repo，只有你看得到。GitHub 本身仍能存取 repo 內容。
+- Token 存在該裝置瀏覽器的 localStorage，不會被「匯出備份」帶出去，也不會上傳到 repo。它只能讀寫你勾選的那個 repo，碰不到你其他的 repo 或帳號設定。
+- 任何能在這台裝置打開這個網站的人，都能用這個 token 讀寫你的學習紀錄。不要在公用或別人的電腦上開啟同步。同一個 GitHub 帳號底下的其他 GitHub Pages 網站，和這個網站共用同一個網域，理論上也讀得到 token。
+- 裝置遺失、或不想再同步：在網站按「關閉並刪除這台的 token」，並到 GitHub 的 Fine-grained tokens 頁面刪除那個 token。
+- 已開同步時按「清除全部資料」，下次同步會把雲端進度合併回來。真的想從頭開始，請先關閉同步，再刪除 repo 裡的 `progress.json`。
+- 每次同步會在私人 repo 留下一個 commit，所以 repo 也同時保有歷史版本；需要時可以從 GitHub 找回舊的 `progress.json`。
+
+### 為什麼選 GitHub 私人 repo
+
+| 方案 | 優點 | 缺點 |
+|---|---|---|
+| **GitHub 私人 repo + fine-grained token（採用）** | 免費、不需後端；token 可限定只能碰一個 repo；資料真正私人；有歷史版本 | 要自己建 repo 和產生 token，每年更新一次 token |
+| Secret Gist | 不用建 repo | 「Secret」只是不公開列出，拿到網址的人就能看；token 權限是整個帳號的 Gist |
+| Google Drive／Dropbox API | 一般人較熟悉 | 要註冊開發者應用、設定 OAuth 與網域，設定較複雜 |
+| Firebase、Supabase 等免費雲端資料庫 | 即時同步 | 要另外註冊和管理服務，金鑰會放在公開網站上，免費額度條款可能變動 |
+| 手動複製／匯入（原有功能） | 最簡單 | 要記得每次手動操作 |
 
 ## 日文語音
 
@@ -101,12 +159,14 @@ js/counters.js        數字與助數詞讀音（含音便）
 js/dataindex.js       單字解析、逐詞解釋詞庫
 js/quizgen.js         題目產生器（12 種題型、課程測驗、每日／週／月、模擬考）
 js/storage.js         localStorage 存取、匯出、匯入、合併、驗證
+js/sync.js            GitHub 私人 repo 雲端同步（自動同步、離線補傳、衝突重試）
 js/progress.js        間隔複習（SRS）、課程完成條件、統計、弱點、今日任務
 js/audio.js           日文朗讀、逐句播放器、跟讀、語音偵測與測試
 js/view-*.js          各頁面
 data/*.js             教材資料（課程、單字、文法、閱讀、聽力、模擬考設定、錄音對照表）
 tests/validate.js     教材一致性驗證（node tests/validate.js）
 tests/browser-test.js 端對端瀏覽器測試（Playwright）
+tests/sync-test.js    雲端同步測試（模擬 GitHub 與兩台裝置，不會連到真正的 GitHub）
 tests/list-audio-keys.js  列出全部朗讀句
 ```
 
@@ -128,11 +188,12 @@ tests/list-audio-keys.js  列出全部朗讀句
 node tests/validate.js                 # 教材驗證
 python3 -m http.server 8000 &          # 另開伺服器
 node tests/browser-test.js             # 端對端測試（需要 Playwright；會清除 localhost:8000 的資料）
+node tests/sync-test.js                # 雲端同步測試（模擬 GitHub）
 ```
 
 ## 已知限制
 
 - 語音的有無和品質取決於瀏覽器與作業系統。部分手機在螢幕關閉或切到背景時會中斷朗讀。Android 的暫停功能不穩定，所以系統的「暫停」實際做法是停在目前這句，按繼續時從這句開頭重念。
 - 沒有發音評分和手寫辨識功能。跟讀時要靠自己對照判斷。
-- 只用 localStorage 儲存，不同瀏覽器或裝置之間不會自動同步，需要手動匯出再匯入。
+- 雲端同步需要自己的 GitHub 帳號、私人 repo 和 token（見「雲端同步」）。沒設定時，不同瀏覽器或裝置之間不會同步，需要手動匯出再匯入。
 - 教材已經用程式檢查過讀音和答案，也逐條人工複查過一次（見 REVIEW-CHANGES.md），但仍是自編內容，可能有疏漏。有疑問時請以字典或日語老師為準。

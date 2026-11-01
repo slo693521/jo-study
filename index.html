@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>日本語ノート N5 自學系統</title>
-<meta name="description" content="零基礎 6 個月 JLPT N5 自學教材：課程、單字間隔複習、文法、有聲書、聽力與測驗。純前端，資料存在你的瀏覽器。">
+<meta name="description" content="零基礎 6 個月 JLPT N5 自學教材：課程、單字間隔複習、文法、有聲書、聽力與測驗。純前端，資料存在你的瀏覽器，可選擇用自己的 GitHub 私人 repo 同步。">
 <link rel="stylesheet" href="styles.css">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#2a5bb0">
@@ -20,6 +20,7 @@
   <button id="menuBtn" class="icon-btn" aria-label="開啟選單" aria-expanded="false" aria-controls="nav">☰</button>
   <a class="brand" href="#/home"><span class="brand-jp">日本語</span><span class="brand-sub">N5 自學系統</span></a>
   <div class="top-actions">
+    <button id="syncChip" class="chip chip-btn" hidden title="雲端同步"></button>
     <span id="streakChip" class="chip" title="連續學習天數"></span>
     <button id="voiceChip" class="chip chip-btn" title="日文語音狀態（點擊前往設定）"></button>
   </div>
@@ -57,6 +58,7 @@
 <script src="data/mocks.js"></script>
 <script src="data/audiomap.js"></script>
 <script src="js/storage.js"></script>
+<script src="js/sync.js"></script>
 <script src="js/progress.js"></script>
 <script src="js/audio.js"></script>
 <script src="app.js"></script>

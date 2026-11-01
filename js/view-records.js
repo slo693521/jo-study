@@ -76,15 +76,69 @@
         ${slider('fontScale', '文字大小', 0.9, 1.4, 0.05, s.fontScale, '×')}</div>
       <div class="card"><h2>學習量</h2>${slider('newPerDay', '每天新單字上限', 3, 30, 1, s.newPerDay, ' 個')}${slider('reviewCap', '每次複習上限', 10, 100, 5, s.reviewCap, ' 張')}
         <p class="small muted" style="margin:0">建議新單字每天 8–12 個。複習到期的單字比學新字重要。</p></div>
+      ${syncCard()}
       <div class="card"><h2>備份與還原</h2>
-        ${notice('你的學習進度只存在這個瀏覽器的 <b>localStorage</b>。它<b>不是雲端備份</b>：清除瀏覽資料、使用無痕模式、換瀏覽器或換電腦，進度都會消失。請定期匯出備份檔，並放在雲端硬碟或隨身碟。', 'warn')}
+        ${notice('你的學習進度存在這個瀏覽器的 <b>localStorage</b>。沒開雲端同步時，清除瀏覽資料、使用無痕模式、換瀏覽器或換電腦，進度都會消失。即使開了同步，也建議偶爾匯出一份備份檔。', 'warn')}
         <div class="row"><button class="btn primary" data-act="doExport">⬇ 匯出備份（JSON）</button><label class="btn" for="impFile" style="cursor:pointer">⬆ 匯入備份…</label><input id="impFile" type="file" accept="application/json,.json" data-on="impFile" style="position:absolute;left:-9999px"></div>
         <div class="row" style="margin-top:.5rem"><button class="btn" data-act="copyExport">📋 複製備份文字</button><button class="btn" data-act="pasteImport">📥 貼上備份文字匯入</button></div>
-        <p class="small muted" style="margin:.4rem 0 0">手機或電腦之間轉移進度：在一台按「複製備份文字」，用 LINE／記事本／Email 傳到另一台，再按「貼上備份文字匯入」。</p>
+        <p class="small muted" style="margin:.4rem 0 0">沒開雲端同步時，也可以手動轉移：在一台按「複製備份文字」，傳到另一台，再按「貼上備份文字匯入」（選「合併」）。</p>
         <p class="small muted" style="margin:.6rem 0 0">上次匯出：${st.lastExport ? App.fmtDate(st.lastExport, true) : '從未匯出'}　·　目前資料大小約 ${kb} KB　·　儲存狀態：${Store.isPersistent() ? '正常' : '<b style="color:var(--bad)">無法寫入 localStorage（資料只存在記憶體）</b>'}</p></div>
       <div class="card"><h2>清除所有資料</h2><p class="small muted">會刪除全部課程進度、單字進度、測驗紀錄與設定，無法復原。建議先匯出備份。</p><button class="btn danger" data-act="doReset">清除全部資料…</button></div>`);
     App.onVoiceChange = () => { if (App.current === 'settings') App.refresh(); };
   };
+  /* ---------- 雲端同步 ---------- */
+  function syncCard() {
+    if (!root.Sync) return '';
+    const c = Sync.getConfig();
+    const help = `<details class="fold"><summary>第一次設定步驟（約 5 分鐘）</summary><ol class="small">
+        <li>登入 GitHub，按右上角「+」→「New repository」。名稱填 <code>jp-study-data</code>，選 <b>Private</b>，按「Create repository」。</li>
+        <li>到 GitHub 的 Settings → Developer settings → Personal access tokens → <b>Fine-grained tokens</b> →「Generate new token」。</li>
+        <li>Token name 隨意（例如「日文同步-手機」）；Expiration 選 1 年；Repository access 選 <b>Only select repositories</b>，只勾 <code>jp-study-data</code>。</li>
+        <li>Permissions → Repository permissions → <b>Contents</b> 設成 <b>Read and write</b>（其他都不用動），按「Generate token」，複製以 <code>github_pat_</code> 開頭的文字。</li>
+        <li>回到這裡填入帳號、repo 名稱，貼上 token，按「連線並同步」。另一台裝置也做第 5 步（建議另外產生一個 token，之後可以個別撤銷）。</li></ol></details>`;
+    const privacy = `<p class="small muted" style="margin:.5rem 0 0">隱私：資料只在你的瀏覽器和你自己的 GitHub 私人 repo 之間傳送，不經過其他伺服器。Token 只存在這台裝置，不會被匯出或上傳；它只能讀寫你勾選的那一個 repo。裝置遺失或不用了，到 GitHub 的 token 頁面按 Delete 即可讓它失效。請不要在別人的電腦上開啟同步。</p>`;
+    if (c.enabled) return `<div class="card"><h2>☁️ 雲端同步（GitHub）</h2>
+        <div id="syncStatus">${App.syncStatusHtml()}</div>
+        <p class="small">同步到：<code>${esc(c.owner)}/${esc(c.repo)}</code>　·　這台裝置名稱：${esc(c.device)}</p>
+        <div class="row"><button class="btn primary" data-act="syncNow">⟳ 立即同步</button><button class="btn" data-act="syncOff">關閉同步</button><button class="btn danger" data-act="syncForget">關閉並刪除這台的 token</button></div>
+        <p class="small muted" style="margin:.5rem 0 0">開啟後會自動同步：打開網站時、做完一段練習約 15 秒後、切到其他 App 或關閉頁面時、恢復連線時。離線時照常使用，資料先存在本機。兩台的進度會合併：單字以最近一次複習為準，完成的課程、測驗紀錄取聯集，成績取最高。</p>
+        ${privacy}</div>`;
+    return `<div class="card"><h2>☁️ 雲端同步（GitHub）</h2>
+        <p>讓手機和電腦自動共用同一份學習紀錄。需要一個免費的 GitHub 帳號和一個<b>私人</b> repo。</p>
+        ${help}
+        <div class="field"><label for="syOwner">GitHub 帳號</label><input id="syOwner" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" value="${esc(c.owner)}" placeholder="例如 your-name"></div>
+        <div class="field"><label for="syRepo">私人 repo 名稱</label><input id="syRepo" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" value="${esc(c.repo)}"></div>
+        <div class="field"><label for="syToken">Token</label><input id="syToken" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="${c.hasToken ? '（已儲存，留空表示沿用）' : 'github_pat_…'}"></div>
+        <div class="field"><label for="syDevice">這台裝置的名稱</label><input id="syDevice" type="text" autocomplete="off" value="${esc(c.device)}"></div>
+        <div class="row"><button class="btn primary" data-act="syncOn">連線並同步</button><span class="small muted" id="syncOut">${c.lastError ? esc(c.lastError) : ''}</span></div>
+        ${privacy}</div>`;
+  }
+  App.syncStatusHtml = function () {
+    const c = Sync.getConfig(), st = Sync.getStatus();
+    const last = c.lastSync ? App.fmtDate(c.lastSync, true) : '尚未同步';
+    if (st.state === 'syncing') return notice('同步中…', '');
+    if (st.state === 'offline') return notice(`目前離線。資料先存在這台裝置，恢復連線後會自動同步。上次同步：${last}`, 'warn');
+    if (st.state === 'error' || c.lastError) return notice(`${esc(st.msg || c.lastError)}。上次成功同步：${last}`, 'warn', '同步失敗');
+    return notice(`上次同步：${last}${c.pending ? '（有新進度等待上傳）' : ''}`, 'ok', '雲端同步已開啟');
+  };
+  App.acts.syncOn = async el => {
+    const out = App.$('#syncOut'); el.disabled = true; out.textContent = '連線中…';
+    const r = await Sync.enable({ owner: App.$('#syOwner').value, repo: App.$('#syRepo').value, token: App.$('#syToken').value, device: App.$('#syDevice').value });
+    el.disabled = false;
+    if (!r.ok) { out.textContent = '✘ ' + r.error; App.toast('同步設定失敗：' + r.error, true); return; }
+    App.toast(r.result.changedLocal ? '已開啟同步，並合併了雲端上的進度。' : '已開啟同步。'); App.refresh();
+  };
+  App.acts.syncNow = async () => {
+    const r = await Sync.syncNow('manual');
+    App.toast(r.ok ? (r.changedLocal ? '已同步，並帶入其他裝置的新進度。' : '已同步。') : '同步失敗：' + (r.error || r.reason), !r.ok);
+    App.refresh();
+  };
+  App.acts.syncOff = () => { Sync.disable(false); App.toast('已關閉同步（token 仍保留在這台裝置，可再開啟）。'); App.updateChips(); App.refresh(); };
+  App.acts.syncForget = async () => {
+    if (!await App.confirm('關閉同步並刪除 token？', '學習紀錄不會被刪除。之後要再同步，需要重新貼上 token。若這台裝置不再使用，也請到 GitHub 刪除這個 token。', '刪除 token', true)) return;
+    Sync.disable(true); App.toast('已關閉同步並刪除這台裝置上的 token。'); App.updateChips(); App.refresh();
+  };
+
   function voiceBox() {
     const st = Audio.getStatus(), v = Audio.pickVoice();
     if (st === 'ready') return notice(`偵測到 ${Audio.getVoices().length} 個日文語音。目前使用：<b>${esc(v ? v.name : '?')}</b>（${esc(v ? v.lang : '')}）。請按下面的「測試日文語音」確認真的有聲音。`, 'ok', '日文語音可用');
@@ -153,7 +207,7 @@
     App.toast(`匯入完成：單字 ${r.cards} 個、課程 ${r.lessons} 筆、測驗 ${r.quizzes} 次。`); App.applySettings(); App.updateChips(); App.refresh();
   };
   App.acts.doReset = () => {
-    App.modal(`<h2 style="color:var(--bad)">清除全部資料</h2><p>這會刪除所有學習進度與設定，<b>無法復原</b>。若要繼續，請在下面輸入「清除」兩個字。</p>
+    App.modal(`<h2 style="color:var(--bad)">清除全部資料</h2><p>這會刪除所有學習進度與設定，<b>無法復原</b>。${root.Sync && Sync.getConfig().enabled ? '<b>注意：雲端同步開啟中</b>，清除後下次同步會把雲端的進度合併回來；若想真的從頭開始，請先關閉同步，並到 GitHub 刪除 repo 裡的 progress.json。' : ''}若要繼續，請在下面輸入「清除」兩個字。</p>
       <input type="text" id="rstIn" placeholder="輸入：清除" autocomplete="off" style="width:100%">
       <div class="row" style="justify-content:flex-end;margin-top:1rem"><button class="btn" data-act="mcancel">取消</button><button class="btn danger" data-act="rstGo">永久清除</button></div>`);
   };
@@ -180,7 +234,7 @@
       <div class="card"><h2>間隔複習（SRS）怎麼運作</h2><p>每個單字有自己的複習時間。看到答案後依記憶情況按：<b>重來</b>（想不起來，約 10 分鐘後再出現）、<b>困難</b>、<b>良好</b>、<b>簡單</b>（間隔越拉越長）。越熟間隔越久，最長 1 年。測驗答錯的單字也會自動進複習。「已熟悉」代表複習間隔 ≥ 21 天而且最近 7 天沒答錯。</p></div>
       <div class="card"><h2>有聲書與朗讀</h2><ul><li>聲音來自瀏覽器的語音合成（Web Speech API），只使用語言為日文的語音；<b>不是真人錄音</b>。</li><li>需要作業系統有日文語音。Windows：設定 → 時間與語言 → 語音；macOS：系統設定 → 輔助使用 → 語音內容；Android：文字轉語音設定。Chrome／Edge 通常有可用的日文語音。</li><li>找不到日文語音時，系統會提示，並且不會用中文語音代替。</li><li>想用真人錄音檔：把音檔放在 <code>audio/</code>，並在 <code>data/audiomap.js</code> 登記，詳見 README。</li></ul></div>
       <div class="card"><h2>快速鍵</h2><ul><li>單字卡：空白鍵／Enter 顯示答案、1–4 評分、P 朗讀、F 收藏</li><li>測驗：1–4 或 A–D 選擇、Enter 下一題</li><li>Esc：關閉視窗或選單</li></ul></div>
-      <div class="card"><h2>已知限制</h2><ul><li>進度存在 localStorage，不是雲端備份；請定期匯出。</li><li>語音品質與可用性取決於瀏覽器與作業系統；部分手機瀏覽器在背景或螢幕關閉時會中斷朗讀。</li><li>沒有手寫或發音評分功能；跟讀只能靠你自己判斷。</li><li>題目是自編的，雖已逐一檢查讀音、翻譯與答案，仍可能有疏漏，發現問題請以字典或日語老師為準。</li></ul></div>`);
+      <div class="card"><h2>已知限制</h2><ul><li>進度存在 localStorage；不開雲端同步時，換裝置或清除瀏覽資料就會遺失，請定期匯出。</li><li>語音品質與可用性取決於瀏覽器與作業系統；部分手機瀏覽器在背景或螢幕關閉時會中斷朗讀。</li><li>沒有手寫或發音評分功能；跟讀只能靠你自己判斷。</li><li>題目是自編的，雖已逐一檢查讀音、翻譯與答案，仍可能有疏漏，發現問題請以字典或日語老師為準。</li></ul></div>`);
   };
   const QG_TYPES = () => root.QuizGen.TYPES;
 })(window);
