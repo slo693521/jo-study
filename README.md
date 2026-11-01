@@ -16,7 +16,7 @@ python3 -m http.server 8000
 接著用瀏覽器開啟 <http://localhost:8000/>。
 
 - 沒有 Python 的話：`npx serve .`（需要 Node.js），或用 VS Code 的 Live Server 擴充套件。
-- **手機使用**：已發佈成私人網頁 <https://claude.ai/artifact/K3QMCjAFnVHKi1jhoJZnL1>，手機登入 claude.ai 後直接開，不用電腦開著。修改程式後要重新發佈才會更新。
+- **手機使用**：已發佈到 GitHub Pages，手機瀏覽器直接開，並可「加入主畫面」當 App 用，離線也能學。修改程式後重新推送即可更新。
 - 手機與電腦的進度不會自動同步：到「設定與備份」按「📋 複製備份文字」，傳到另一台後按「📥 貼上備份文字匯入」（選「合併」）。
 - 手機想連電腦上的網站時，電腦端改成 `python3 -m http.server 8000 --bind 0.0.0.0`，手機再開 `http://電腦的區網IP:8000/`。注意：每個網址（包括 IP 和埠號）的學習紀錄是分開存的。
 - 建議用 Chrome、Edge 或 Safari 的新版本。
